@@ -30,7 +30,7 @@ namespace carbox.Services
 
             _mqttClientOptions = new MqttClientOptionsBuilder()
                 .WithClientId("MQTTServer")
-                .WithTcpServer("localhost", 1883)
+                .WithTcpServer("127.0.0.1", 1883)
                 .Build();
 
             _mqttClient.ApplicationMessageReceivedAsync += OnMessageReceived;
