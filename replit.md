@@ -87,10 +87,11 @@ CARBOX is a ride-sharing application built as a Progressive Web Application (PWA
 - **Static Hosting**: Optimized bundle deployment with asset optimization
 
 ### Backend Deployment
-- **Platform**: Configurable (supports both local development and cloud deployment)
+- **Platform**: Docker containerization for Render deployment
 - **Database**: MongoDB Atlas via Azure Cosmos DB
-- **API Hosting**: ASP.NET Core with HTTPS support
-- **Environment Configuration**: Separate development and production settings
+- **API Hosting**: ASP.NET Core 8.0 with containerized deployment
+- **Environment Configuration**: Environment variables for production settings
+- **API Documentation**: Swagger UI available in all environments for endpoint testing
 
 ### Development Workflow
 - **Local Development**: React development server with hot reloading
@@ -108,6 +109,14 @@ CARBOX is a ride-sharing application built as a Progressive Web Application (PWA
   - Complete API structure: Controllers, Models, Services, Repositories
   - MongoDB and MQTT services integrated for vehicle communication
   - Ready for independent deployment and GitHub upload
+
+- **July 02, 2025**: Added Docker deployment support for Render
+  - Created Dockerfile with multi-stage build for .NET 8.0 application
+  - Configured Swagger UI to be available in production for endpoint testing
+  - Updated CORS and HTTPS settings for cloud deployment
+  - Added .dockerignore for optimized builds
+  - Created comprehensive deployment guide (DEPLOY.md)
+  - Backend now ready for Docker-based deployment on Render platform
 
 ## Changelog
 

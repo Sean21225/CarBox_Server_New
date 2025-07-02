@@ -43,16 +43,22 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments for API testing on Render
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "CARBOX API V1");
+    c.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
+});
 
 // Apply the CORS policy
 app.UseCors("AllowAll");
 
-app.UseHttpsRedirection();
+// Skip HTTPS redirection in production (Render handles SSL termination)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthorization();
 
