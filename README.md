@@ -20,7 +20,6 @@ A .NET Core Web API backend for the CARBOX ride-sharing application with autonom
 ## Project Structure
 
 ```
-carbox-backend/
 ├── Controllers/           # API controllers
 ├── Models/               # Data models
 ├── Services/             # Business logic services

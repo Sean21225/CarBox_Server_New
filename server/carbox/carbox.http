@@ -1,5 +1,0 @@
-@carbox_HostAddress = http://localhost:5269
-
-GET {{carbox_HostAddress}}/SrtarStop/
-Accept: application/json
-###
