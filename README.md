@@ -83,11 +83,35 @@ Update `appsettings.json` with your MongoDB connection string and other settings
 
 ## Deployment
 
-This backend is designed to be deployed independently and can be hosted on:
+### Render Deployment (Recommended)
+
+This backend is containerized and ready for Render deployment:
+
+1. **Push to GitHub repository**
+2. **Connect to Render**:
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New" → "Web Service"
+   - Connect your GitHub repository
+3. **Configure deployment**:
+   - **Build Command**: Leave empty (Docker handles build)
+   - **Start Command**: Leave empty (Docker handles startup)
+   - **Dockerfile**: `Dockerfile`
+4. **Set environment variables**:
+   ```
+   MONGODB_CONNECTION_STRING=your_mongodb_connection_string
+   DATABASE_NAME=carbox
+   MQTT_SERVER=your_mqtt_server (optional)
+   MQTT_PORT=1883 (optional)
+   ```
+5. **Deploy**: Render will automatically build and deploy your Docker container
+
+The API will be available at your Render URL (e.g., `https://your-app.onrender.com`)
+
+### Other Deployment Options
 - Azure App Service
 - AWS Elastic Beanstalk  
-- Docker containers
-- Any .NET Core compatible hosting platform
+- Google Cloud Run
+- Any Docker-compatible hosting platform
 
 ## Development
 

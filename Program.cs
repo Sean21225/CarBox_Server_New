@@ -58,4 +58,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Add health check endpoint for Render
+app.MapGet("/health", () => "Healthy");
+
 app.Run();
