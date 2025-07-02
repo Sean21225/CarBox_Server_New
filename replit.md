@@ -100,12 +100,14 @@ CARBOX is a ride-sharing application built as a Progressive Web Application (PWA
 
 ## Recent Changes
 
-- **July 02, 2025**: Successfully configured CARBOX PWA development environment
-  - Dependencies installed and React PWA running on localhost:3000
-  - All key components verified: SearchBox, QR Scanner, Azure Maps integration
-  - Service worker and PWA manifest properly configured
-  - .NET Core backend API available with MongoDB and MQTT services
-  - Project structure confirmed with complete ride-sharing functionality
+- **July 02, 2025**: Successfully separated CARBOX backend into standalone API
+  - Created independent .NET Core 8.0 Web API project in `/carbox-backend`
+  - Updated namespaces to `CarboxBackend` for clean separation
+  - Configured CORS for cross-origin deployment flexibility
+  - Backend runs on ports 5000 (HTTP) and 5001 (HTTPS)
+  - Complete API structure: Controllers, Models, Services, Repositories
+  - MongoDB and MQTT services integrated for vehicle communication
+  - Ready for independent deployment and GitHub upload
 
 ## Changelog
 
