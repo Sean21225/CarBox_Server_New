@@ -36,3 +36,16 @@ namespace CarboxBackend.Repositories
         }
     }
 }
+
+public static class StationDurations
+{
+    // Matrix[from, to] = travel time in minutes
+    public static readonly int[,] Matrix = new int[,]
+    {
+        // A    B    C    D
+        {  0,  14,  30,  47 }, // A
+        { 38,   0,  16,  33 }, // B
+        { 22,  36,   0,  17 }, // C
+        {  5,  19,  35,   0 }  // D
+    };
+}
