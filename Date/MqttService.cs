@@ -30,7 +30,7 @@ namespace CarboxBackend.Services
 
             _mqttClientOptions = new MqttClientOptionsBuilder()
                 .WithClientId("MQTTServer")
-                .WithTcpServer("127.0.0.1", 1883)
+                .WithTcpServer("test.mosquitto.org", 1883) // Eclipse Mosquitto public broker
                 .Build();
 
             _mqttClient.ApplicationMessageReceivedAsync += OnMessageReceived;
