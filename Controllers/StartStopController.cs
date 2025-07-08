@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using carbox.Date;
 using MongoDB.Driver;
 using Microsoft.Extensions.Primitives;
+using System.Text.Json.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
 using carbox.Models;
 
@@ -69,10 +70,13 @@ namespace carbox.Controllers
     }
 
     public class StatusRequest
-    {
-        public string CarId { get; set; } // Now matches MongoDB _id
-        public int status { get; set; }
-    }
+{
+    [JsonPropertyName("carId")]
+    public string CarId { get; set; }
+
+    [JsonPropertyName("status")]
+    public int status { get; set; }
+}
 
     public class carboxCollection
     {
