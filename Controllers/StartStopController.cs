@@ -1,20 +1,19 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using CarboxBackend.Date;
+using carbox.Date;
 using MongoDB.Driver;
 using Microsoft.Extensions.Primitives;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using carbox.Models;
 
-namespace CarboxBackend.Controllers
+namespace carbox.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
 
     public class StartStopController : ControllerBase
     {
-        //Car car1 = new Car(1, "stop");
-        private readonly IMongoCollection<carboxCollection> cars;
+        private readonly IMongoCollection<Car> cars;
 
         public StartStopController(MongoDBService mongoDBService)
         {
@@ -90,6 +89,3 @@ namespace CarboxBackend.Controllers
         }
     }
 };
-
-
-
