@@ -83,46 +83,46 @@ namespace CarboxBackend.Services
 
         public async Task<RideOrder> SearchCarToRide(int rideOrderId)
         {
+            // Fetch the ride order
             var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
             if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
                 throw new InvalidOperationException("Ride order not found or not open");
             
-            // Get all available cars
-            var availableCars = await _carRepository.GetAvailableCarsAsync();
-            if (!availableCars.Any())
-                throw new InvalidOperationException("No available cars at the moment");
+            var candidateCars = (await _carRepository.GetAvailableCarsAsync())
+                .Where(c => c.BatteryLevel > 40)      // battery
+                .Where(c => c.LastStation != null)    // has last station
+                .ToList();                            // materialise once
+            
+            if (!candidateCars.Any())
+                throw new InvalidOperationException("No cars meet the availability criteria");
 
-            // Filter cars with battery percentage higher than 40%
-            var carsWithSufficientBattery = availableCars.Where(car => car.BatteryLevel > 40).ToList();
-            if (!carsWithSufficientBattery.Any())
-                throw new InvalidOperationException("No cars with sufficient battery available");
+            try
+            {
+                // Sort cars
+                var startStation = rideOrder.source.Id;
+                var sortedCars = CircularSortByStartNumber(candidateCars, startStation);
+                
+                // Time constraint check
+                var selectedCar = sortedCars.First();
+                Console.WriteLine($"selected car: {selectedCar.Id}");
+                int travelTime = StationDurations.Matrix[selectedCar.LastStation.Id - 1, startStation - 1];
+                if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
+                    throw new InvalidOperationException("No CARBOX was found that could arrive at the desired time");
+                // Assign car to ride
+                await AssignCarToRide(selectedCar, rideOrder);
+                
 
-            // Sort cars by their last station in descending and circular order from the requested station
-            int startStation = rideOrder.source.Id;
-            List<Car> sortedCars = CircularSortByStartNumber(carsWithSufficientBattery, startStation);
-            if (!sortedCars.Any())
-                throw new InvalidOperationException("No suitable cars near the requested station");
-
-            // Get the travel time between the last station and pickup station from the time matrix
-            var route = (await _routeRepository.GetAllRoutesAsync()).FirstOrDefault();
-            int travelTime = route.GetTravelTime(sortedCars.First().LastStation.Id, rideOrder.source.Id);
-
-            // Check if the travel time is less than or equal to the maximum allowed time
-            if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
-                throw new InvalidOperationException("No CARBOX was found that could arrive at the desired time");
-
-            var selectedCar = sortedCars.First();
-
-            // Update the ride with the selected car
-            await AssignCarToRide(selectedCar, rideOrder);
-
-            // Check if the travel is a future ride (over 15 minutes of waiting)
-            if (rideOrder.RideTime > DateTime.Now.AddMinutes(15))
-                selectedCar.Status = CarStatus.Waiting;            
-
-            return rideOrder;
+                // Set waiting status for future rides
+                if (rideOrder.RideTime > DateTime.Now.AddMinutes(15))
+                    selectedCar.Status = CarStatus.Waiting;
+                return rideOrder;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception in SearchCarToRide: " + e.Message);
+                throw;
+            }
         }
-
 
         // Function for circular sorting with a start number, filtering out the start number itself
         public static List<Car> CircularSortByStartNumber(List<Car> cars, int startNumber)
@@ -135,16 +135,6 @@ namespace CarboxBackend.Services
                     c.LastStation.Id - int.MaxValue / 2
                 ).ToList();
         }
-
-
-
-
-
-
-
-
-
-
 
 
         //// Get the route information
