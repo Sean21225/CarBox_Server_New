@@ -66,7 +66,7 @@ namespace CarboxBackend.Controllers
             try
             {
                 var ride = await _rideService.SearchCarToRide(rideOrderId);
-                return Ok(ride);
+                return Ok(new { ride, arrival = ride.RideTime.AddMinutes(StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1])});
             }
             catch (Exception ex)
             {
