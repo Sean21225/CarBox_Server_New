@@ -65,6 +65,7 @@ namespace CarboxBackend.Controllers
         {
             try
             {
+                Console.WriteLine($"assign car {rideOrderId}");
                 var ride = await _rideService.SearchCarToRide(rideOrderId);
                 Console.WriteLine($"departure at: {ride.RideTime}, ride duration: {StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1]}");
                 return Ok(new { ride, arrival = ride.RideTime.AddMinutes(StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1])});
