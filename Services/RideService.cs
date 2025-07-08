@@ -83,6 +83,7 @@ namespace CarboxBackend.Services
 
         public async Task<RideOrder> SearchCarToRide(int rideOrderId)
         {
+            Console.WriteLine("search car to ride");
             // Fetch the ride order
             var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
             if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
