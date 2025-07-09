@@ -32,7 +32,7 @@ namespace carbox.Controllers
 
         // POST: api/StartStop
         [HttpPost]
-        public IActionResult UpdateCarStatus([FromBody] StatusRequest request)
+        public IActionResult UpdateCarStatus([FromBody] CarStatusRequest request)
         {
             Console.WriteLine($"[DEBUG] Received UpdateCarStatus request: CarId={request?.CarId}, status={request?.status}");
             if (request == null)
@@ -68,9 +68,9 @@ namespace carbox.Controllers
         }
     }
 
-    public class StatusRequest
+    public class CarStatusRequest
     {
-        public string CarId { get; set; } // Now matches MongoDB _id
+        public string CarId { get; set; }
         public int status { get; set; }
     }
 
