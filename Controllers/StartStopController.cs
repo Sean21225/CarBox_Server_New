@@ -62,7 +62,12 @@ namespace CarboxBackend.Controllers
             }
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
 
-            car.Status = request.status;
+            if (!Enum.TryParse<CarStatus>(request.status, ignoreCase: true, out var parsedStatus))
+            {
+                return BadRequest(new { message = $"Invalid status value: {request.status}" });
+            }
+            car.Status = parsedStatus;
+
             cars.ReplaceOne(c => c.Id == car.Id, car);
             Console.WriteLine($"[DEBUG] Updated car: Id={car.Id}, Status(after)={car.Status}");
 
