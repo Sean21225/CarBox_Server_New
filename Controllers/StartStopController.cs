@@ -41,9 +41,6 @@ namespace carbox.Controllers
                 return BadRequest(new { message = "Invalid status request." });
             }
 
-            Console.WriteLine($"[DEBUG] Using database: {cars.Database.DatabaseNamespace.DatabaseName}");
-            Console.WriteLine($"[DEBUG] Using collection: {cars.CollectionNamespace.CollectionName}");
-
             // Print all cars to the console
             var allCars = cars.Find(car => true).ToList();
             Console.WriteLine($"[DEBUG] All cars in collection (count: {allCars.Count}):");
@@ -60,7 +57,7 @@ namespace carbox.Controllers
             }
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
 
-            car.Status = (CarStatus)request.status;
+            car.Status = (CarStatus)int.Parse(request.status);
             cars.ReplaceOne(c => c.Id == car.Id, car);
             Console.WriteLine($"[DEBUG] Updated car: Id={car.Id}, Status(after)={car.Status}");
 
@@ -71,7 +68,7 @@ namespace carbox.Controllers
     public class CarStatusRequest
     {
         public string CarId { get; set; }
-        public int status { get; set; }
+        public string status { get; set; }
     }
 
     public class carboxCollection
