@@ -35,7 +35,6 @@ namespace CarboxBackend.Controllers
         // POST: api/StartStop
         [HttpPost]
         public IActionResult UpdateCarStatus([FromBody] StatusRequest request)
-        public IActionResult UpdateCarStatus([FromBody] StatusRequest request)
         {
             Console.WriteLine($"[DEBUG] Received UpdateCarStatus request: CarId={request?.CarId}, status={request?.status}");
             if (request == null)
