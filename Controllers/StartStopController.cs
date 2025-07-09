@@ -35,6 +35,7 @@ namespace CarboxBackend.Controllers
         [HttpPost]
         public IActionResult UpdateCarStatus([FromBody] StatusRequest request)
         {
+            Console.WriteLine("in updateCarStatus");
             if (request == null || string.IsNullOrEmpty(request.status))
             {
                 return BadRequest("Invalid status request.");
@@ -55,7 +56,8 @@ namespace CarboxBackend.Controllers
 
     public class StatusRequest
     {
-        public string status { get; set; }
+        public string CarId { get; set; }
+        public int status { get; set; }
     }
 
     public class carboxCollection
