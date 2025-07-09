@@ -1,19 +1,20 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using CarboxBackend.Models;
-using CarboxBackend.Repositories;
-using CarboxBackend.Services;
+using Microsoft.AspNetCore.Mvc;
+using carbox.Models;
+using carbox.Repositories;
+using carbox.Services;
 using System;
 using System.Threading.Tasks;
 using TimeZoneConverter;
 using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace CarboxBackend.Controllers
+namespace carbox.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class RideOrdersController : ControllerBase
     {
         private readonly RideService _rideService;
+        private readonly RideOrderRepository _rideOrderRepository;
 
         public RideOrdersController(RideService rideService)
         {
@@ -42,6 +43,7 @@ namespace CarboxBackend.Controllers
 
             //// Convert to Israel time using the new function
             //DateTime createdAtIsraelTime = ConvertUtcToIsraelTime(createdAtUtc);
+            
 
 
             var rideOrder = new RideOrder
@@ -55,7 +57,11 @@ namespace CarboxBackend.Controllers
 
             var createdRide = await _rideService.CreateRideOrderAsync(rideOrder);
 
-            return Ok(new { Message = "Ride order created successfully" });
+            return Ok(new {
+                Message = "Ride order created successfully",
+                Ride = createdRide
+            });
+
         }
 
         // Assigns a car to a ride order
@@ -66,7 +72,8 @@ namespace CarboxBackend.Controllers
             try
             {
                 var ride = await _rideService.SearchCarToRide(rideOrderId);
-                return Ok(ride);
+                Console.WriteLine($"departure at: {ride.RideTime}, ride duration: {StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1]}");
+                return Ok(new { ride, arrival = ride.RideTime.AddMinutes(StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1])});
             }
             catch (Exception ex)
             {
@@ -83,5 +90,10 @@ namespace CarboxBackend.Controllers
             public required Station Destination { get; set; }
             public DateTime RideTime { get; set; }
         }
+    }
+    
+    public class DepartureBody
+    {
+        public int departure { get; set; }
     }
 }
