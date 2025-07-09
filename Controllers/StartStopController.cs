@@ -74,7 +74,7 @@ namespace carbox.Controllers
     [JsonPropertyName("carId")]
     public string CarId { get; set; }
 
-    [JsonPropertyName("status")]
+    [JsonPropertyName("Status")]
     public int status { get; set; }
 }
 
