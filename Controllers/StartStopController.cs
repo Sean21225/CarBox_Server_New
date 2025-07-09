@@ -15,7 +15,7 @@ namespace CarboxBackend.Controllers
     public class StartStopController : ControllerBase
     {
         //Car car1 = new Car(1, "stop");
-        private readonly IMongoCollection<carboxCollection> cars;
+        private readonly IMongoCollection<Car> cars;
 
         public StartStopController(MongoDBService mongoDBService)
         {
