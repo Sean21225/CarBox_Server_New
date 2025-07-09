@@ -57,7 +57,7 @@ namespace CarboxBackend.Controllers
     public class StatusRequest
     {
         public string CarId { get; set; }
-        public int status { get; set; }
+        public string status { get; set; }
     }
 
     public class carboxCollection
