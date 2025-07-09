@@ -62,7 +62,7 @@ namespace CarboxBackend.Controllers
             }
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
 
-            car.Status = (CarStatus)request.status;
+            car.Status = request.status;
             cars.ReplaceOne(c => c.Id == car.Id, car);
             Console.WriteLine($"[DEBUG] Updated car: Id={car.Id}, Status(after)={car.Status}");
 
