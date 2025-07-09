@@ -18,7 +18,7 @@ namespace CarboxBackend.Controllers
 
         public StartStopController(MongoDBService mongoDBService)
         {
-            cars = mongoDBService.Database?.GetCollection<carboxCollection>("carboxCollection");
+            cars = mongoDBService.Database?.GetCollection<Car>("Cars");
         }
 
 
