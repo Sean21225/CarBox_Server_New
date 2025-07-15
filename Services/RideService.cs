@@ -102,6 +102,12 @@ namespace CarboxBackend.Services
                 // Sort cars
                 var startStation = rideOrder.source.Id;
                 var sortedCars = CircularSortByStartNumber(candidateCars, startStation);
+                Console.WriteLine($"Candidate cars count: {candidateCars.Count}");
+                foreach (var car in candidateCars)
+                    Console.WriteLine($"Car {car.Id}: Status={car.Status}, Battery={car.BatteryLevel}, LastStation={car.LastStation?.Id}");
+                Console.WriteLine($"Sorted cars count: {sortedCars.Count}");
+                foreach (var car in sortedCars)
+                    Console.WriteLine($"Sorted Car {car.Id}: LastStation={car.LastStation?.Id}");
                 
                 // Time constraint check
                 var selectedCar = sortedCars.First();
