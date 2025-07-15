@@ -12,8 +12,9 @@ builder.Services.AddScoped(provider =>
     return mongoDBService.Database;
 });
 
-// Add MQTTClientService as a Background Service
-builder.Services.AddHostedService<MqttService>();
+// Add MQTTClientService as a Background Service and Singleton
+builder.Services.AddSingleton<MqttService>();
+builder.Services.AddHostedService<MqttService>(provider => provider.GetService<MqttService>());
 builder.Services.AddScoped<CarService>();
 
 builder.Services.AddScoped<RideOrderRepository>();

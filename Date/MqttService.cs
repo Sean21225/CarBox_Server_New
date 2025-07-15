@@ -138,6 +138,32 @@ namespace CarboxBackend.Services
             }
         }
 
+        public async Task PublishMessageAsync(string topic, string message)
+        {
+            try
+            {
+                if (_mqttClient.IsConnected)
+                {
+                    var mqttMessage = new MqttApplicationMessageBuilder()
+                        .WithTopic(topic)
+                        .WithPayload(message)
+                        .WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtMostOnce)
+                        .Build();
+
+                    await _mqttClient.PublishAsync(mqttMessage);
+                    Console.WriteLine($"Published message to topic '{topic}': {message}");
+                }
+                else
+                {
+                    Console.WriteLine("MQTT client is not connected. Cannot publish message.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error publishing MQTT message: {ex.Message}");
+            }
+        }
+
         public class CarMassage
         {
             public string Id { get; set; }
