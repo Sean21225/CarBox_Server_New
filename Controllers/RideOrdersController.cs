@@ -55,7 +55,7 @@ namespace CarboxBackend.Controllers
 
             var createdRide = await _rideService.CreateRideOrderAsync(rideOrder);
 
-            return Ok(new { Message = "Ride order created successfully" });
+            return Ok(new { Message = "Ride order created successfully", Ride = createdRide });
         }
 
         // Assigns a car to a ride order
