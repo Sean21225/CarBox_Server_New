@@ -20,6 +20,7 @@ namespace CarboxBackend.Services
         private readonly CarService _carService;
 
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly Guid _instanceId = Guid.NewGuid();
 
         public MqttService(IServiceScopeFactory serviceScopeFactory)
         {
@@ -34,6 +35,26 @@ namespace CarboxBackend.Services
                 .Build();
 
             _mqttClient.ApplicationMessageReceivedAsync += OnMessageReceived;
+            _mqttClient.DisconnectedAsync += async e =>
+            {
+                Console.WriteLine($"[MqttService {_instanceId}] MQTT client disconnected. Reason: {e.Reason}");
+                if (e.Exception != null)
+                {
+                    Console.WriteLine($"[MqttService {_instanceId}] Exception: {e.Exception.Message}");
+                }
+                // Optionally, try to reconnect
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                try
+                {
+                    await _mqttClient.ConnectAsync(_mqttClientOptions);
+                    Console.WriteLine($"[MqttService {_instanceId}] Reconnected to MQTT broker.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MqttService {_instanceId}] Reconnection failed: {ex.Message}");
+                }
+            };
+            Console.WriteLine($"[MqttService {_instanceId}] Constructor called.");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -151,16 +172,16 @@ namespace CarboxBackend.Services
                         .Build();
 
                     await _mqttClient.PublishAsync(mqttMessage);
-                    Console.WriteLine($"Published message to topic '{topic}': {message}");
+                    Console.WriteLine($"[MqttService {_instanceId}] Published message to topic '{topic}': {message}");
                 }
                 else
                 {
-                    Console.WriteLine("MQTT client is not connected. Cannot publish message.");
+                    Console.WriteLine($"[MqttService {_instanceId}] MQTT client is not connected. Cannot publish message.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error publishing MQTT message: {ex.Message}");
+                Console.WriteLine($"[MqttService {_instanceId}] Error publishing MQTT message: {ex.Message}");
             }
         }
 
