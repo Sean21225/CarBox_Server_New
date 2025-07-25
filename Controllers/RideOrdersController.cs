@@ -43,6 +43,9 @@ namespace CarboxBackend.Controllers
                 return BadRequest(new { message = "Source and destination stations must be different." });
             }
 
+            Console.WriteLine("creating ride order");
+            Console.WriteLine($"source: {rideOrderRequest.source}, destination: {rideOrderRequest.Destination}");
+
             var rideOrder = new RideOrder
             {
                 UserId = rideOrderRequest.UserId,
