@@ -132,17 +132,20 @@ namespace CarboxBackend.Services
         }
 
 
-        // Function for circular sorting with a start number, filtering out the start number itself
+        // Function for circular sorting with a start number
         public static List<Car> CircularSortByStartNumber(List<Car> cars, int startNumber)
         {
             return cars
-                .Where(c => c.LastStation.Id != startNumber)  // Filter out the start number
                 .OrderByDescending(c =>
-                    c.LastStation.Id < startNumber ?
-                    c.LastStation.Id :
-                    c.LastStation.Id - int.MaxValue / 2
-                ).ToList();
-        }
+                                   c.LastStation.Id == startNumber
+                                   ? int.MinValue // put startNumber cars at the end
+                                   : (c.LastStation.Id < startNumber
+                                      ? c.LastStation.Id
+                                      : c.LastStation.Id - int.MaxValue / 2)
+                                   )
+                .ToList();
+            }
+
 
         //// Get the route information
         //var route = await _routeRepository.GetRouteByIdAsync(rideOrder.RouteId);
