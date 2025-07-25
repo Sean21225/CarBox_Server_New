@@ -38,7 +38,7 @@ namespace CarboxBackend.Controllers
             }
 
             // Validate source and destination are different
-            if (rideOrderRequest.source == rideOrderRequest.Destination)
+            if (rideOrderRequest.source.Id == rideOrderRequest.Destination.Id)
             {
                 return BadRequest(new { message = "Source and destination stations must be different." });
             }
