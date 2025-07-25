@@ -37,12 +37,11 @@ namespace CarboxBackend.Controllers
                 return BadRequest("Invalid ride order request.");
             }
 
-            //// Get current UTC time
-            //DateTime createdAtUtc = DateTime.UtcNow;
-
-            //// Convert to Israel time using the new function
-            //DateTime createdAtIsraelTime = ConvertUtcToIsraelTime(createdAtUtc);
-
+            // Validate source and destination are different
+            if (rideOrderRequest.source == rideOrderRequest.Destination)
+            {
+                return BadRequest(new { message = "Source and destination stations must be different." });
+            }
 
             var rideOrder = new RideOrder
             {
