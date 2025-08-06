@@ -7,6 +7,7 @@ using MongoDB.Bson.Serialization.Attributes;
 using CarboxBackend.Models;
 using CarboxBackend.Services;
 using Newtonsoft.Json;
+using CarboxBackend.Repositories;
 
 namespace carbox.Controllers
 {
@@ -64,6 +65,18 @@ namespace carbox.Controllers
             car.Status = (CarStatus)int.Parse(request.status);
             cars.ReplaceOne(c => c.Id == car.Id, car);
             Console.WriteLine($"[DEBUG] Updated car: Id={car.Id}, Status(after)={car.Status}");
+
+            // If the car status is InProgress, subscribe to the end ride topic
+            if (car.Status == CarStatus.Occupied)
+            {
+                // Try to find the ride order assigned to this car and in progress
+                var rideOrderRepository = (RideOrderRepository)HttpContext.RequestServices.GetService(typeof(RideOrderRepository));
+                var rideOrder = rideOrderRepository?.GetAllRidesAsync().Result?.Find(r => r.AssignedCarId == car.Id && r.Status == RideOrderStatus.InProgress);
+                if (rideOrder != null)
+                {
+                    _ = _mqttService.SubscribeToEndRideTopicAsync(rideOrder.Id.ToString());
+                }
+            }
 
             // Publish MQTT message to notify the car about status change
             var carCommand = new

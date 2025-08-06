@@ -123,6 +123,11 @@ namespace CarboxBackend.Services
             return rideOrder;
         }
 
+        public async Task<List<RideOrder>> GetAllRideOrdersAsync()
+        {
+            return await _rideOrderRepository.GetAllRidesAsync();
+        }
+
 
         // Function for circular sorting with a start number, filtering out the start number itself
         public static List<Car> CircularSortByStartNumber(List<Car> cars, int startNumber)

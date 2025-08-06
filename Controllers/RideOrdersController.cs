@@ -74,6 +74,14 @@ namespace CarboxBackend.Controllers
             }
         }
 
+        // GET: /api/RideOrders
+        [HttpGet]
+        public async Task<IActionResult> GetAllRideOrders()
+        {
+            var rides = await _rideService.GetAllRideOrdersAsync();
+            return Ok(rides);
+        }
+
 
         // DTO for incoming ride order request
         public class RideOrderRequest

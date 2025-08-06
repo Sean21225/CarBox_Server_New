@@ -82,16 +82,49 @@ namespace CarboxBackend.Services
             }
         }
 
+        public async Task SubscribeToEndRideTopicAsync(string rideId, CancellationToken cancellationToken = default)
+        {
+            var topic = $"carbox/ride/{rideId}/end";
+            var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
+                .WithTopicFilter(f => f.WithTopic(topic))
+                .Build();
+            await _mqttClient.SubscribeAsync(subscribeOptions, cancellationToken);
+            Console.WriteLine($"[MqttService {_instanceId}] Subscribed to end ride topic: {topic}");
+        }
+
         private async Task OnMessageReceived(MqttApplicationMessageReceivedEventArgs e)
         {
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 var carRepository = scope.ServiceProvider.GetRequiredService<CarRepository>(); 
                 var carService = scope.ServiceProvider.GetRequiredService<CarService>(); 
+                var rideOrderRepository = scope.ServiceProvider.GetRequiredService<RideOrderRepository>();
 
                 var topic = e.ApplicationMessage.Topic;
                 var payload = Encoding.UTF8.GetString(e.ApplicationMessage.Payload.ToArray());
                 Console.WriteLine($"Received message from topic '{topic}': {payload}");
+
+                // Handle end ride message
+                if (topic.StartsWith("carbox/ride/") && topic.EndsWith("/end"))
+                {
+                    // Extract rideId from topic
+                    var parts = topic.Split('/');
+                    if (parts.Length >= 4)
+                    {
+                        var rideIdStr = parts[2];
+                        if (int.TryParse(rideIdStr, out int rideId))
+                        {
+                            var rideOrder = await rideOrderRepository.GetRideByIdAsync(rideId);
+                            if (rideOrder != null && rideOrder.Status != RideOrderStatus.Completed)
+                            {
+                                rideOrder.Status = RideOrderStatus.Completed;
+                                await rideOrderRepository.UpdateRideAsync(rideOrder);
+                                Console.WriteLine($"Ride {rideId} marked as completed due to end ride MQTT message.");
+                            }
+                        }
+                    }
+                    return;
+                }
 
                 try
                 {
