@@ -30,7 +30,7 @@ namespace CarboxBackend.Services
             _mqttClient = mqttFactory.CreateMqttClient();
 
             _mqttClientOptions = new MqttClientOptionsBuilder()
-                .WithClientId("MQTTServer")
+                .WithClientId($"MQTTServer-{_instanceId}")
                 .WithTcpServer("test.mosquitto.org", 1883) // Eclipse Mosquitto public broker
                 .Build();
 
@@ -66,10 +66,11 @@ namespace CarboxBackend.Services
 
                 var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
                     .WithTopicFilter(f => f.WithTopic("carbox/data/#"))
+                    .WithTopicFilter(f => f.WithTopic("carbox/ride/+/end"))
                     .Build();
 
                 await _mqttClient.SubscribeAsync(subscribeOptions, stoppingToken);
-                Console.WriteLine("Subscribed to topic: carbox/data/#");
+                Console.WriteLine("Subscribed to topics: carbox/data/# and carbox/ride/+/end");
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
@@ -92,6 +93,73 @@ namespace CarboxBackend.Services
             Console.WriteLine($"[MqttService {_instanceId}] Subscribed to end ride topic: {topic}");
         }
 
+        public async Task UnsubscribeFromEndRideTopicAsync(string rideId, CancellationToken cancellationToken = default)
+        {
+            var topic = $"carbox/ride/{rideId}/end";
+            var unsubscribeOptions = new MqttClientUnsubscribeOptionsBuilder()
+                .WithTopicFilter(topic)
+                .Build();
+            await _mqttClient.UnsubscribeAsync(unsubscribeOptions, cancellationToken);
+            Console.WriteLine($"[MqttService {_instanceId}] Unsubscribed from end ride topic: {topic}");
+        }
+
+        private async Task CompleteRideAsync(int rideId, RideOrderRepository rideOrderRepository, CarRepository carRepository)
+        {
+            try
+            {
+                Console.WriteLine($"[MqttService {_instanceId}] Starting ride completion process for ride ID: {rideId}");
+                
+                // Get the ride order
+                var rideOrder = await rideOrderRepository.GetRideByIdAsync(rideId);
+                if (rideOrder == null)
+                {
+                    Console.WriteLine($"[MqttService {_instanceId}] No ride order found with ID: {rideId}");
+                    return;
+                }
+
+                Console.WriteLine($"[MqttService {_instanceId}] Found ride order: ID={rideOrder.Id}, Status={rideOrder.Status}, AssignedCarId={rideOrder.AssignedCarId}");
+
+                // Check if ride is already completed
+                if (rideOrder.Status == RideOrderStatus.Completed)
+                {
+                    Console.WriteLine($"[MqttService {_instanceId}] Ride {rideId} was already completed.");
+                    return;
+                }
+
+                // Update ride status to completed
+                rideOrder.Status = RideOrderStatus.Completed;
+                await rideOrderRepository.UpdateRideAsync(rideOrder);
+                Console.WriteLine($"[MqttService {_instanceId}] Ride {rideId} marked as completed.");
+
+                // Update car status to Available if a car is assigned
+                if (!string.IsNullOrEmpty(rideOrder.AssignedCarId))
+                {
+                    var car = await carRepository.GetCarByIdAsync(rideOrder.AssignedCarId);
+                    if (car != null)
+                    {
+                        Console.WriteLine($"[MqttService {_instanceId}] Found assigned car: ID={car.Id}, Status={car.Status}");
+                        
+                        // Set car status to Available
+                        car.Status = CarStatus.Available;
+                        await carRepository.UpdateCarAsync(car);
+                        Console.WriteLine($"[MqttService {_instanceId}] Car {car.Id} status updated to Available.");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[MqttService {_instanceId}] Assigned car {rideOrder.AssignedCarId} not found.");
+                    }
+                }
+
+                // Unsubscribe from the specific ride's MQTT topic
+                await UnsubscribeFromEndRideTopicAsync(rideId.ToString());
+                Console.WriteLine($"[MqttService {_instanceId}] Completed ride termination process for ride {rideId}. No further MQTT communication needed for this ride.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MqttService {_instanceId}] Error completing ride {rideId}: {ex.Message}");
+            }
+        }
+
         private async Task OnMessageReceived(MqttApplicationMessageReceivedEventArgs e)
         {
             using (var scope = _serviceScopeFactory.CreateScope())
@@ -102,26 +170,32 @@ namespace CarboxBackend.Services
 
                 var topic = e.ApplicationMessage.Topic;
                 var payload = Encoding.UTF8.GetString(e.ApplicationMessage.Payload.ToArray());
-                Console.WriteLine($"Received message from topic '{topic}': {payload}");
+                Console.WriteLine($"[MqttService {_instanceId}] Received message from topic '{topic}': {payload}");
 
                 // Handle end ride message
                 if (topic.StartsWith("carbox/ride/") && topic.EndsWith("/end"))
                 {
+                    Console.WriteLine($"[MqttService {_instanceId}] Processing end ride message for topic: {topic}");
                     // Extract rideId from topic
                     var parts = topic.Split('/');
+                    Console.WriteLine($"[MqttService {_instanceId}] Topic parts: {string.Join(", ", parts)}");
                     if (parts.Length >= 4)
                     {
                         var rideIdStr = parts[2];
+                        Console.WriteLine($"[MqttService {_instanceId}] Extracted ride ID string: {rideIdStr}");
                         if (int.TryParse(rideIdStr, out int rideId))
                         {
-                            var rideOrder = await rideOrderRepository.GetRideByIdAsync(rideId);
-                            if (rideOrder != null && rideOrder.Status != RideOrderStatus.Completed)
-                            {
-                                rideOrder.Status = RideOrderStatus.Completed;
-                                await rideOrderRepository.UpdateRideAsync(rideOrder);
-                                Console.WriteLine($"Ride {rideId} marked as completed due to end ride MQTT message.");
-                            }
+                            Console.WriteLine($"[MqttService {_instanceId}] Parsed ride ID: {rideId}");
+                            await CompleteRideAsync(rideId, rideOrderRepository, carRepository);
                         }
+                        else
+                        {
+                            Console.WriteLine($"[MqttService {_instanceId}] Failed to parse ride ID from string: {rideIdStr}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[MqttService {_instanceId}] Invalid topic format. Expected at least 4 parts, got {parts.Length}");
                     }
                     return;
                 }
