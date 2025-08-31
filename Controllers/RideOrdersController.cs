@@ -1,11 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using CarboxBackend.Models;
 using CarboxBackend.Repositories;
 using CarboxBackend.Services;
 using System;
 using System.Threading.Tasks;
-using TimeZoneConverter;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace CarboxBackend.Controllers
 {
@@ -26,23 +24,21 @@ namespace CarboxBackend.Controllers
             return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, israelTimeZone);
         }
 
-
-        // Creates a new ride order
         // POST: /api/RideOrders
         [HttpPost]
         public async Task<IActionResult> CreateRideOrder([FromBody] RideOrderRequest rideOrderRequest)
         {
             if (rideOrderRequest == null || !ModelState.IsValid)
-            {
                 return BadRequest("Invalid ride order request.");
-            }
 
-            //// Get current UTC time
-            //DateTime createdAtUtc = DateTime.UtcNow;
+            if (rideOrderRequest.source == null || rideOrderRequest.Destination == null)
+                return BadRequest("Source and destination must be provided.");
 
-            //// Convert to Israel time using the new function
-            //DateTime createdAtIsraelTime = ConvertUtcToIsraelTime(createdAtUtc);
+            if (rideOrderRequest.source.Id == rideOrderRequest.Destination.Id)
+                return BadRequest(new { message = "Source and destination stations must be different." });
 
+            Console.WriteLine("Creating ride order");
+            Console.WriteLine($"Source: {rideOrderRequest.source.Id}, Destination: {rideOrderRequest.Destination.Id}");
 
             var rideOrder = new RideOrder
             {
@@ -55,46 +51,49 @@ namespace CarboxBackend.Controllers
 
             var createdRide = await _rideService.CreateRideOrderAsync(rideOrder);
 
-            return Ok(new {
-                Message = "Ride order created successfully",
-                Ride = createdRide
-            });
+            return Ok(new { Message = "Ride order created successfully", Ride = createdRide });
         }
 
-        // Assigns a car to a ride order
         // POST: /api/RideOrders/{rideOrderId}/assign
-        [HttpPost("{rideOrderId}/assign")]
         [HttpPost("{rideOrderId}/assign")]
         public async Task<IActionResult> AssignCar(int rideOrderId)
         {
             try
             {
-                Console.WriteLine($"assign car {rideOrderId}");
+                Console.WriteLine($"AssignCar called with rideOrderId={rideOrderId}");
                 var ride = await _rideService.SearchCarToRide(rideOrderId);
-                Console.WriteLine($"departure at: {ride.RideTime}, ride duration: {StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1]}");
-                return Ok(new { ride, arrival = ride.RideTime.AddMinutes(StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1])});
+
+                if (ride == null)
+                    return BadRequest(new { message = "No ride found or no suitable cars available." });
+
+                // Calculate arrival time safely
+                int travelMinutes = 0;
+                if (StationDurations.Matrix != null &&
+                    ride.source != null &&
+                    ride.Destination != null)
+                {
+                    travelMinutes = StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1];
+                }
+
+                return Ok(new
+                {
+                    ride,
+                    arrival = ride.RideTime.AddMinutes(travelMinutes)
+                });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error in AssignCar: {ex.Message}");
                 return BadRequest(new { message = ex.Message });
             }
         }
-
-        // GET: /api/RideOrders
-        [HttpGet]
-        public async Task<IActionResult> GetAllRideOrders()
-        {
-            var rides = await _rideService.GetAllRideOrdersAsync();
-            return Ok(rides);
-        }
-
 
         // DTO for incoming ride order request
         public class RideOrderRequest
         {
             public int UserId { get; set; }
-            public required Station source { get; set; }
-            public required Station Destination { get; set; }
+            public Station source { get; set; }
+            public Station Destination { get; set; }
             public DateTime RideTime { get; set; }
         }
     }
