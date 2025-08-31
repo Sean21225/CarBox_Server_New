@@ -96,7 +96,11 @@ namespace CarboxBackend.Services
             var carsWithSufficientBattery = availableCars.Where(car => car.BatteryLevel > 40).ToList();
             if (!carsWithSufficientBattery.Any())
                 throw new InvalidOperationException("No cars with sufficient battery available");
-
+            foreach (var car in carsWithSufficientBattery)
+            {
+                string lastStationId = car.LastStation != null ? car.LastStation.Id.ToString() : "null";
+                Console.WriteLine($"Car Id: {car.Id}, Status: {car.Status}, Battery: {car.BatteryLevel}%, LastStation: {lastStationId}");
+            }
             // Sort cars by their last station in descending and circular order from the requested station
             int startStation = rideOrder.source.Id;
             Console.WriteLine($"Sorting cars relative to startStation={startStation}");
