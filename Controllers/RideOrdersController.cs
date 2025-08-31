@@ -64,17 +64,18 @@ namespace CarboxBackend.Controllers
         // Assigns a car to a ride order
         // POST: /api/RideOrders/{rideOrderId}/assign
         [HttpPost("{rideOrderId}/assign")]
+        [HttpPost("{rideOrderId}/assign")]
         public async Task<IActionResult> AssignCar(int rideOrderId)
         {
-            Console.WriteLine($"AssignCar called with rideOrderId={rideOrderId}");
             try
             {
+                Console.WriteLine($"assign car {rideOrderId}");
                 var ride = await _rideService.SearchCarToRide(rideOrderId);
-                return Ok(ride);
+                Console.WriteLine($"departure at: {ride.RideTime}, ride duration: {StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1]}");
+                return Ok(new { ride, arrival = ride.RideTime.AddMinutes(StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1])});
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in AssignCar: {ex}");
                 return BadRequest(new { message = ex.Message });
             }
         }
