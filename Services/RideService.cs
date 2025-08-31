@@ -99,6 +99,7 @@ namespace CarboxBackend.Services
 
             // Sort cars by their last station in descending and circular order from the requested station
             int startStation = rideOrder.source.Id;
+            Console.WriteLine($"Sorting cars relative to startStation={startStation}");
             List<Car> sortedCars = CircularSortByStartNumber(carsWithSufficientBattery, startStation);
             if (!sortedCars.Any())
                 throw new InvalidOperationException("No suitable cars near the requested station");
