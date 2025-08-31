@@ -64,7 +64,6 @@ namespace CarboxBackend.Controllers
         // Assigns a car to a ride order
         // POST: /api/RideOrders/{rideOrderId}/assign
         [HttpPost("{rideOrderId}/assign")]
-        [HttpPost("{rideOrderId}/assign")]
         public async Task<IActionResult> AssignCar(int rideOrderId)
         {
             Console.WriteLine($"AssignCar called with rideOrderId={rideOrderId}");
