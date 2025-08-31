@@ -82,77 +82,54 @@ namespace CarboxBackend.Services
         }
 
         public async Task<RideOrder> SearchCarToRide(int rideOrderId)
-{
-    Console.WriteLine($"SearchCarToRide called with rideOrderId={rideOrderId}");
+        {
+            Console.WriteLine("search car to ride");
+            // Fetch the ride order
+            var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
+            if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
+                throw new InvalidOperationException("Ride order not found or not open");
+            
+            var candidateCars = (await _carRepository.GetAvailableCarsAsync())
+                .Where(c => c.BatteryLevel > 40)      // battery
+                .Where(c => c.LastStation != null)    // has last station
+                .ToList();                            // materialise once
+            
+            if (!candidateCars.Any())
+                throw new InvalidOperationException("No cars meet the availability criteria");
 
-    // 1️⃣ Get the ride order
-    var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
-    if (rideOrder == null)
-        throw new InvalidOperationException("Ride order not found");
+            try
+            {
+                // Sort cars
+                var startStation = rideOrder.source.Id;
+                var sortedCars = CircularSortByStartNumber(candidateCars, startStation);
+                Console.WriteLine($"Candidate cars count: {candidateCars.Count}");
+                foreach (var car in candidateCars)
+                    Console.WriteLine($"Car {car.Id}: Status={car.Status}, Battery={car.BatteryLevel}, LastStation={car.LastStation?.Id}");
+                Console.WriteLine($"Sorted cars count: {sortedCars.Count}");
+                foreach (var car in sortedCars)
+                    Console.WriteLine($"Sorted Car {car.Id}: LastStation={car.LastStation?.Id}");
+                
+                // Time constraint check
+                var selectedCar = sortedCars.First();
+                Console.WriteLine($"selected car: {selectedCar.Id}");
+                int travelTime = StationDurations.Matrix[selectedCar.LastStation.Id - 1, startStation - 1];
+                if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
+                    throw new InvalidOperationException("No CARBOX was found that could arrive at the desired time");
+                // Assign car to ride
+                await AssignCarToRide(selectedCar, rideOrder);
+                
 
-    if (rideOrder.Status != RideOrderStatus.Open)
-        throw new InvalidOperationException("Ride order is not open");
-
-    Console.WriteLine($"Ride found: Id={rideOrderId}, source={rideOrder.source?.Id}, destination={rideOrder.Destination?.Id}, RideTime={rideOrder.RideTime}");
-
-    // 2️⃣ Get available cars
-    var availableCars = await _carRepository.GetAvailableCarsAsync();
-    if (!availableCars.Any())
-        throw new InvalidOperationException("No available cars at the moment");
-
-    Console.WriteLine($"Total available cars: {availableCars.Count}");
-
-    // 3️⃣ Filter cars with battery > 40%
-    var carsWithSufficientBattery = availableCars.Where(car => car.BatteryLevel > 40).ToList();
-    if (!carsWithSufficientBattery.Any())
-        throw new InvalidOperationException("No cars with sufficient battery available");
-
-    Console.WriteLine("Cars with sufficient battery:");
-    foreach (var car in carsWithSufficientBattery)
-    {
-        Console.WriteLine($"Car Id: {car.Id}, Status: {car.Status}, Battery: {car.BatteryLevel}%, LastStation: {car.LastStation?.Id}");
-    }
-
-    // 4️⃣ Sort cars by circular distance from start station
-    int startStation = rideOrder.source?.Id ?? 0;
-    Console.WriteLine($"Sorting cars relative to startStation={startStation}");
-    List<Car> sortedCars = CircularSortByStartNumber(carsWithSufficientBattery, startStation);
-    if (!sortedCars.Any())
-        throw new InvalidOperationException("No suitable cars near the requested station");
-
-    // 5️⃣ Get route
-    var route = (await _routeRepository.GetAllRoutesAsync()).FirstOrDefault();
-    if (route == null)
-        throw new InvalidOperationException("No routes found in the system");
-
-    Console.WriteLine("Route found, calculating travel time...");
-
-    // 6️⃣ Calculate travel time safely
-    var selectedCar = sortedCars.First();
-    int lastStationId = selectedCar.LastStation?.Id ?? -1;
-    int sourceId = rideOrder.source?.Id ?? -1;
-
-    if (lastStationId == -1 || sourceId == -1)
-        throw new InvalidOperationException("Invalid last station or ride source");
-
-    int travelTime = route.GetTravelTime(lastStationId, sourceId);
-    Console.WriteLine($"Selected Car Id: {selectedCar.Id}, LastStation: {lastStationId}, TravelTime to source: {travelTime} minutes");
-
-    // 7️⃣ Check if car can arrive in time
-    if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
-        throw new InvalidOperationException("No CARBOX was found that could arrive at the desired time");
-
-    // 8️⃣ Assign car to ride
-    await AssignCarToRide(selectedCar, rideOrder);
-
-    // 9️⃣ Set future ride status
-    if (rideOrder.RideTime > DateTime.Now.AddMinutes(15))
-        selectedCar.Status = CarStatus.Waiting;
-
-    Console.WriteLine($"Car {selectedCar.Id} assigned to ride {rideOrderId}");
-    return rideOrder;
-}
-
+                // Set waiting status for future rides
+                if (rideOrder.RideTime > DateTime.Now.AddMinutes(15))
+                    selectedCar.Status = CarStatus.Waiting;
+                return rideOrder;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception in SearchCarToRide: " + e.Message);
+                throw;
+            }
+        }
 
         public async Task<List<RideOrder>> GetAllRideOrdersAsync()
         {
