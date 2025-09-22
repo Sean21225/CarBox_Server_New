@@ -73,12 +73,14 @@ namespace CarboxBackend.Controllers
                     ride.Destination != null)
                 {
                     travelMinutes = StationDurations.Matrix[ride.source.Id - 1, ride.Destination.Id - 1];
+                    Console.WriteLine($"travelMinutes: {travelMinutes}");
                 }
 
                 return Ok(new
                 {
                     ride,
-                    arrival = ride.RideTime.AddMinutes(travelMinutes)
+                    arrival = ride.RideTime.AddMinutes(travelMinutes),
+                    travelMinutes
                 });
             }
             catch (Exception ex)
