@@ -101,7 +101,7 @@ namespace carbox.Controllers
     {
         public string CarId { get; set; }
         public string status { get; set; }
-        public in rideId { get; set; }
+        public int rideId { get; set; }
     }
 
     public class carboxCollection
