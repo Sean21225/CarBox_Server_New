@@ -45,7 +45,7 @@ namespace carbox.Controllers
                 Console.WriteLine("[DEBUG] Request is null");
                 return BadRequest(new { message = "Invalid status request." });
             }
-            Console.WriteLine("hey Ron");
+            Console.WriteLine($"hey Ron, the rideId is {request?.rideId}");
             // Print all cars to the console
             var allCars = cars.Find(car => true).ToList();
             Console.WriteLine($"[DEBUG] All cars in collection (count: {allCars.Count}):");
@@ -101,6 +101,7 @@ namespace carbox.Controllers
     {
         public string CarId { get; set; }
         public string status { get; set; }
+        public in rideId { get; set; }
     }
 
     public class carboxCollection
