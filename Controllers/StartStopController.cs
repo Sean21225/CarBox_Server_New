@@ -80,7 +80,7 @@ namespace carbox.Controllers
             var carCommand = new
             {
                 CarId = car.Id,
-                Command = "STATUS_UPDATE",
+                Command = "COMMAND_START_RIDE",
                 NewStatus = car.Status,
                 Timestamp = DateTime.UtcNow,
                 RideId = request.rideId
