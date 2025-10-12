@@ -61,7 +61,7 @@ namespace CarboxBackend.Services
         {
             // Assign the car to the ride order
             rideOrder.AssignedCarId = car.Id;
-            rideOrder.Status = RideOrderStatus.Assigned;
+            rideOrder.Status = RideOrderStatus.Waiting;
 
             // Save rideOrder updates to the database
             await _rideOrderRepository.UpdateRideAsync(rideOrder);
@@ -83,7 +83,6 @@ namespace CarboxBackend.Services
 
         public async Task<RideOrder> SearchCarToRide(int rideOrderId)
         {
-            Console.WriteLine("search car to ride");
             // Fetch the ride order
             var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
             if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
@@ -102,13 +101,7 @@ namespace CarboxBackend.Services
                 // Sort cars
                 var startStation = rideOrder.source.Id;
                 var sortedCars = CircularSortByStartNumber(candidateCars, startStation);
-                Console.WriteLine($"Candidate cars count: {candidateCars.Count}");
-                foreach (var car in candidateCars)
-                    Console.WriteLine($"Car {car.Id}: Status={car.Status}, Battery={car.BatteryLevel}, LastStation={car.LastStation?.Id}");
-                Console.WriteLine($"Sorted cars count: {sortedCars.Count}");
-                foreach (var car in sortedCars)
-                    Console.WriteLine($"Sorted Car {car.Id}: LastStation={car.LastStation?.Id}");
-                
+                Console.WriteLine($"Candidate cars count: {candidateCars.Count}");                
                 // Time constraint check
                 var selectedCar = sortedCars.First();
                 Console.WriteLine($"selected car: {selectedCar.Id}");
