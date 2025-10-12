@@ -44,13 +44,6 @@ namespace carbox.Controllers
                 Console.WriteLine("[DEBUG] Request is null");
                 return BadRequest(new { message = "Invalid status request." });
             }
-            // Print all cars to the console
-            var allCars = cars.Find(car => true).ToList();
-            Console.WriteLine($"[DEBUG] All cars in collection (count: {allCars.Count}):");
-            foreach (var c in allCars)
-            {
-                Console.WriteLine($"  Id: {c.Id}, Status: {c.Status}");
-            }
 
             var car = cars.Find(car => car.Id == request.CarId).FirstOrDefault();
             if (car == null)
@@ -61,10 +54,10 @@ namespace carbox.Controllers
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
 
             car.Status = (CarStatus)int.Parse(request.status);
-            cars.ReplaceOne(c => c.Id == car.Id, car);
+            var update = Builders<Car>.Update.Set(c => c.Status, car.Status);
+            cars.UpdateOne(c => c.Id == car.Id, update);
             Console.WriteLine($"[DEBUG] Updated car: Id={car.Id}, Status(after)={car.Status}");
 
-            // If the car status is InProgress, subscribe to the end ride topic
             if (car.Status == CarStatus.Occupied)
             {
                 // Try to find the ride order assigned to this car and in progress
@@ -81,9 +74,8 @@ namespace carbox.Controllers
             {
                 CarId = car.Id,
                 Command = "COMMAND_START_RIDE",
-                NewStatus = car.Status,
-                Timestamp = DateTime.UtcNow,
-                RideId = request.rideId
+                RideId = request.rideId,
+                Timestamp = DateTime.UtcNow
             };
 
             string mqttTopic = $"carbox/commands/{car.Id}";
