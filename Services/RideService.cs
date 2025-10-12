@@ -75,7 +75,7 @@ namespace CarboxBackend.Services
             car.StopStations = car.StopStations.OrderBy(s => s.Id).ToList(); // Example sorting logic
 
             // Update car status to "Occupied"
-            car.Status = CarStatus.Occupied;
+            car.Status = CarStatus.Waiting;
 
             await _carRepository.UpdateCarAsync(car);
             return rideOrder;
