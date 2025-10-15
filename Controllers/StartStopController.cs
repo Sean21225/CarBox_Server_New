@@ -52,7 +52,7 @@ namespace carbox.Controllers
                 return NotFound(new { message = $"No car with Id {request.CarId} available to update." });
             }
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
-
+            Console.WriteLine($"[DEBUG] request.status = {request.status}");
             car.Status = (CarStatus)int.Parse(request.status);
             var update = Builders<Car>.Update.Set(c => c.Status, car.Status);
             cars.UpdateOne(c => c.Id == car.Id, update);
