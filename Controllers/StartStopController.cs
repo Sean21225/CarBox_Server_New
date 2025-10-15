@@ -37,7 +37,7 @@ namespace carbox.Controllers
 
         // POST: api/StartStop
         [HttpPost]
-        public IActionResult UpdateCarStatus([FromBody] CarStatusRequest request)
+        public async Task<IActionResult> UpdateCarStatus([FromBody] CarStatusRequest request)
         {
             if (request == null)
             {
@@ -52,7 +52,7 @@ namespace carbox.Controllers
                 return NotFound(new { message = $"No car with Id {request.CarId} available to update." });
             }
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
-            Console.WriteLine($"[DEBUG] request.status = {request.status}");
+
             car.Status = (CarStatus)int.Parse(request.status);
             var update = Builders<Car>.Update.Set(c => c.Status, car.Status);
             cars.UpdateOne(c => c.Id == car.Id, update);
@@ -61,13 +61,24 @@ namespace carbox.Controllers
             if (car.Status == CarStatus.Occupied)
             {
                 // Try to find the ride order assigned to this car and in progress
-                var rideOrderRepository = (RideOrderRepository)HttpContext.RequestServices.GetService(typeof(RideOrderRepository));
-                var rideOrder = rideOrderRepository?.GetAllRidesAsync().Result?.Find(r => r.AssignedCarId == car.Id && r.Status == RideOrderStatus.InProgress);
+                var allRides = await _rideOrderRepository.GetAllRidesAsync();
+                var rideOrder = allRides?.Find(r => r.AssignedCarId == car.Id && r.Status == RideOrderStatus.InProgress);
                 if (rideOrder != null)
                 {
                     _ = _mqttService.SubscribeToEndRideTopicAsync(rideOrder.Id.ToString());
                 }
             }
+
+            // Try to enrich the command with ride's source/destination station names
+            string? sourceStationName = null;
+            string? destinationStationName = null;
+            try
+            {
+                var rideById = await _rideOrderRepository.GetRideByIdAsync(request.rideId);
+                sourceStationName = rideById?.source?.Name;
+                destinationStationName = rideById?.Destination?.Name;
+            }
+            catch { }
 
             // Publish MQTT message to notify the car about status change
             var carCommand = new
@@ -75,6 +86,8 @@ namespace carbox.Controllers
                 CarId = car.Id,
                 Command = "COMMAND_START_RIDE",
                 RideId = request.rideId,
+                SourceStationName = sourceStationName,
+                DestinationStationName = destinationStationName,
                 Timestamp = DateTime.UtcNow
             };
 
