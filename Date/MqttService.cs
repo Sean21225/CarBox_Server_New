@@ -65,12 +65,12 @@ namespace CarboxBackend.Services
                 Console.WriteLine("Connected to MQTT broker.");
 
                 var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
-                    .WithTopicFilter(f => f.WithTopic("carbox/data/#"))
-                    .WithTopicFilter(f => f.WithTopic("carbox/ride/+/end"))
+                    .WithTopicFilter(f => f.WithTopic("carbox/status/#"))
+                    .WithTopicFilter(f => f.WithTopic("carbox/ride/#"))
                     .Build();
 
                 await _mqttClient.SubscribeAsync(subscribeOptions, stoppingToken);
-                Console.WriteLine("Subscribed to topics: carbox/data/# and carbox/ride/+/end");
+                Console.WriteLine("Subscribed to topics: carbox/status/# and carbox/ride/#");
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
