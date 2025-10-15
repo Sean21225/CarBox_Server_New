@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using CarboxBackend.Date;
 using MongoDB.Driver;
@@ -37,7 +37,7 @@ namespace carbox.Controllers
 
         // POST: api/StartStop
         [HttpPost]
-        public async Task<IActionResult> UpdateCarStatus([FromBody] CarStatusRequest request)
+        public IActionResult UpdateCarStatus([FromBody] CarStatusRequest request)
         {
             if (request == null)
             {
@@ -52,7 +52,7 @@ namespace carbox.Controllers
                 return NotFound(new { message = $"No car with Id {request.CarId} available to update." });
             }
             Console.WriteLine($"[DEBUG] Found car: Id={car.Id}, Status(before)={car.Status}");
-
+            Console.WriteLine($"[DEBUG] request.status = {request.status}");
             car.Status = (CarStatus)int.Parse(request.status);
             var update = Builders<Car>.Update.Set(c => c.Status, car.Status);
             cars.UpdateOne(c => c.Id == car.Id, update);
@@ -61,22 +61,23 @@ namespace carbox.Controllers
             if (car.Status == CarStatus.Occupied)
             {
                 // Try to find the ride order assigned to this car and in progress
-                var allRides = await _rideOrderRepository.GetAllRidesAsync();
-                var rideOrder = allRides?.Find(r => r.AssignedCarId == car.Id && r.Status == RideOrderStatus.InProgress);
+                var rideOrderRepository = (RideOrderRepository)HttpContext.RequestServices.GetService(typeof(RideOrderRepository));
+                var rideOrder = rideOrderRepository?.GetAllRidesAsync().Result?.Find(r => r.AssignedCarId == car.Id && r.Status == RideOrderStatus.InProgress);
                 if (rideOrder != null)
                 {
                     _ = _mqttService.SubscribeToEndRideTopicAsync(rideOrder.Id.ToString());
                 }
             }
 
-            // Try to enrich the command with ride's source/destination station names
             string? sourceStationName = null;
             string? destinationStationName = null;
             try
             {
-                var rideById = await _rideOrderRepository.GetRideByIdAsync(request.rideId);
+                var rideOrderRepositoryForNames = (RideOrderRepository)HttpContext.RequestServices.GetService(typeof(RideOrderRepository));
+                var rideById = rideOrderRepositoryForNames?.GetRideByIdAsync(request.rideId).Result;
                 sourceStationName = rideById?.source?.Name;
                 destinationStationName = rideById?.Destination?.Name;
+                Console.WriteLine($"[DEBUG] sourceStationName: {sourceStationName}, destinationStationName: {destinationStationName}");
             }
             catch { }
 
