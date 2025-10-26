@@ -30,6 +30,15 @@ namespace carbox.Controllers
             return Ok(car_list);
         }
 
+        // POST: api/StartStop/erase
+        [HttpPost("init")]
+        public IActionResult Init()
+        {
+            var update = Builders<Car>.Update.Set(c => c.Status, CarStatus.Available);
+            var result = cars.UpdateMany(car => true, update);
+            return Ok(new { message = "All cars statuses have been initialized." });
+        }
+
         // POST: api/StartStop
         [HttpPost]
         public IActionResult UpdateCarStatus([FromBody] CarStatusRequest request)
@@ -86,3 +95,4 @@ namespace carbox.Controllers
         }
     }
 };
+
