@@ -131,16 +131,19 @@ namespace CarboxBackend.Services
 
 
         // Function for circular sorting with a start number, filtering out the start number itself
-        public static List<Car> CircularSortByStartNumber(List<Car> cars, int startNumber)
-        {
-            return cars
-                .Where(c => c.LastStation.Id != startNumber)  // Filter out the start number
-                .OrderByDescending(c =>
-                    c.LastStation.Id < startNumber ?
-                    c.LastStation.Id :
-                    c.LastStation.Id - int.MaxValue / 2
-                ).ToList();
-        }
+        // Function for circular sorting with a start number, putting same-station cars last
+public static List<Car> CircularSortByStartNumber(List<Car> cars, int startNumber)
+{
+    return cars
+        .OrderBy(c =>
+            c.LastStation.Id == startNumber      // cars at source get 'true' -> sorted last
+                ? int.MaxValue                   // ensures they're last
+                : c.LastStation.Id < startNumber
+                    ? -(startNumber - c.LastStation.Id) // sort by proximity "before" start
+                    : (c.LastStation.Id - startNumber)) // sort by proximity "after" start
+        .ToList();
+}
+
 
 
 
