@@ -129,9 +129,9 @@ namespace CarboxBackend.Services
             Console.WriteLine($"[UTC] carArrivalUtc={carArrivalUtc:O}");
 
             // Compare using UTC
-            if (carArrivalUtc > rideOrder.RideTime)
+            if (carArrivalIL > rideOrder.RideTime)
             {
-                rideOrder.RideTime = carArrivalUtc;
+                rideOrder.RideTime = carArrivalIL;
                 await _rideOrderRepository.UpdateRideAsync(rideOrder);
                 Console.WriteLine($"[Adjusted RideTime UTC] -> {rideOrder.RideTime:O}");
             }
