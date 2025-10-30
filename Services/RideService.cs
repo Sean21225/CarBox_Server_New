@@ -82,58 +82,90 @@ namespace CarboxBackend.Services
         }
 
         public async Task<RideOrder> SearchCarToRide(int rideOrderId)
+{
+    // --- Local helper: normalize any DateTime to UTC ---
+    // Treat Unspecified as Israel local time (common in UI-picked times), then convert to UTC.
+    static DateTime ToUtc(DateTime dt)
+    {
+        if (dt.Kind == DateTimeKind.Utc) return dt;
+        if (dt.Kind == DateTimeKind.Local) return dt.ToUniversalTime();
+
+        // Unspecified → assume Asia/Jerusalem local then convert to UTC
+        var il = TimeZoneInfo.FindSystemTimeZoneById("Israel Standard Time");
+        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), il);
+    }
+
+    // 1) Fetch the ride order
+    var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
+    if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
+        throw new InvalidOperationException("Ride order not found or not open");
+
+    // Normalize requested time to UTC for all comparisons/storage
+    rideOrder.RideTime = ToUtc(rideOrder.RideTime);
+
+    // 2) Candidate cars
+    var candidateCars = (await _carRepository.GetAvailableCarsAsync())
+        .Where(c => c.BatteryLevel > 40)
+        .Where(c => c.LastStation != null)
+        .ToList();
+
+    if (!candidateCars.Any())
+        throw new InvalidOperationException("No cars meet the availability criteria");
+
+    try
+    {
+        // 3) Choose a car (keep your existing strategy)
+        var startStationId = rideOrder.source.Id;
+        var sortedCars = CircularSortByStartNumber(candidateCars, startStationId);
+        var selectedCar = sortedCars.First();
+
+        // 4) Compute travel time with full safety
+        int travelMinutes = 0;
+        if (StationDurations.Matrix != null && selectedCar.LastStation != null)
         {
-            // Fetch the ride order
-            var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
-            if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
-                throw new InvalidOperationException("Ride order not found or not open");
-            
-            var candidateCars = (await _carRepository.GetAvailableCarsAsync())
-                .Where(c => c.BatteryLevel > 40)      // battery
-                .Where(c => c.LastStation != null)    // has last station
-                .ToList();                            // materialise once
-            
-            if (!candidateCars.Any())
-                throw new InvalidOperationException("No cars meet the availability criteria");
+            int from = selectedCar.LastStation.Id - 1;
+            int to   = startStationId - 1;
 
-            try
-            {
-                // Sort cars
-                var startStation = rideOrder.source.Id;
-                var sortedCars = CircularSortByStartNumber(candidateCars, startStation);
-                Console.WriteLine($"Candidate cars count: {candidateCars.Count}");                
-                // Time constraint check
-                var selectedCar = sortedCars.First();
-                Console.WriteLine($"selected car: {selectedCar.Id}");
-                int travelTime = StationDurations.Matrix[selectedCar.LastStation.Id - 1, startStation - 1];
-                var realTime = DateTime.Now.AddMinutes(travelTime);
-                var reqTime = rideOrder.RideTime;
-                Console.WriteLine($"realTime: {realTime}");
-                Console.WriteLine($"reqTime: {reqTime}");
-                if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
-                {
-                    // Can't make it -> postpone ride to when car will arrive
-                    rideOrder.RideTime = DateTime.Now.AddMinutes(travelTime);
-                    Console.WriteLine($"Adjusted ride time to {rideOrder.RideTime}");
+            bool inBounds =
+                from >= 0 && to >= 0 &&
+                from < StationDurations.Matrix.GetLength(0) &&
+                to   < StationDurations.Matrix.GetLength(1);
 
-                    // Update the ride in Mongo
-                    await _rideOrderRepository.UpdateRideAsync(rideOrder);
-                }
-                // Assign car to ride
-                await AssignCarToRide(selectedCar, rideOrder);
-                
-
-                // Set waiting status for future rides
-                if (rideOrder.RideTime > DateTime.Now.AddMinutes(15))
-                    selectedCar.Status = CarStatus.Waiting;
-                return rideOrder;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Exception in SearchCarToRide: " + e.Message);
-                throw;
-            }
+            if (inBounds)
+                travelMinutes = StationDurations.Matrix[from, to];
         }
+
+        // 5) All timing in UTC
+        var nowUtc          = DateTime.UtcNow;
+        var carArrivalUtc   = nowUtc.AddMinutes(travelMinutes);
+        var requestedUtc    = rideOrder.RideTime; // already normalized to UTC above
+
+        Console.WriteLine($"[UTC] now={nowUtc:O}, carArrival={carArrivalUtc:O}, requested={requestedUtc:O}, travelMin={travelMinutes}");
+
+        // 6) If the car can't make the requested time → postpone to car arrival time (UTC)
+        if (carArrivalUtc > requestedUtc)
+        {
+            rideOrder.RideTime = carArrivalUtc;
+            await _rideOrderRepository.UpdateRideAsync(rideOrder);
+            Console.WriteLine($"[UTC] Adjusted RideTime -> {rideOrder.RideTime:O}");
+        }
+
+        // 7) Assign the car (uses possibly-updated RideTime)
+        await AssignCarToRide(selectedCar, rideOrder);
+
+        // 8) Waiting status threshold (UTC)
+        if (rideOrder.RideTime > nowUtc.AddMinutes(15))
+            selectedCar.Status = CarStatus.Waiting;
+
+        return rideOrder;
+    }
+    catch (Exception e)
+    {
+        Console.WriteLine("Exception in SearchCarToRide: " + e.Message);
+        throw;
+    }
+}
+
 
         public async Task<List<RideOrder>> GetAllRideOrdersAsync()
         {
