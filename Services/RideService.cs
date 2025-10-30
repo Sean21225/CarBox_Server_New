@@ -107,7 +107,14 @@ namespace CarboxBackend.Services
                 Console.WriteLine($"selected car: {selectedCar.Id}");
                 int travelTime = StationDurations.Matrix[selectedCar.LastStation.Id - 1, startStation - 1];
                 if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
-                    throw new InvalidOperationException("No CARBOX was found that could arrive at the desired time");
+                {
+                    // Can't make it -> postpone ride to when car will arrive
+                    rideOrder.RideTime = DateTime.Now.AddMinutes(travelTime);
+                    Console.WriteLine($"Adjusted ride time to {rideOrder.RideTime}");
+
+                    // Update the ride in Mongo
+                    await _rideOrderRepository.UpdateRideAsync(rideOrder);
+                }
                 // Assign car to ride
                 await AssignCarToRide(selectedCar, rideOrder);
                 
