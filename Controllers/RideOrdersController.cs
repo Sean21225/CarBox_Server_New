@@ -62,6 +62,7 @@ namespace CarboxBackend.Controllers
             {
                 Console.WriteLine($"AssignCar called with rideOrderId={rideOrderId}");
                 var ride = await _rideService.SearchCarToRide(rideOrderId);
+                Console.WriteLine($"new departure: {ride.RideTime}");
 
                 if (ride == null)
                     return BadRequest(new { message = "No ride found or no suitable cars available." });
@@ -79,6 +80,7 @@ namespace CarboxBackend.Controllers
                 return Ok(new
                 {
                     ride,
+                    
                     arrival = ride.RideTime.AddMinutes(travelMinutes),
                     travelMinutes
                 });
