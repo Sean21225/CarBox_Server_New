@@ -106,6 +106,10 @@ namespace CarboxBackend.Services
                 var selectedCar = sortedCars.First();
                 Console.WriteLine($"selected car: {selectedCar.Id}");
                 int travelTime = StationDurations.Matrix[selectedCar.LastStation.Id - 1, startStation - 1];
+                var realTime = DateTime.Now.AddMinutes(travelTime);
+                var reqTime = rideOrder.RideTime;
+                Console.WriteLine($"realTime: {realTime}");
+                Console.WriteLine($"reqTime: {reqTime}");
                 if (DateTime.Now.AddMinutes(travelTime) > rideOrder.RideTime)
                 {
                     // Can't make it -> postpone ride to when car will arrive
