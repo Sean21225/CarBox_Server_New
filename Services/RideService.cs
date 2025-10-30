@@ -82,89 +82,67 @@ namespace CarboxBackend.Services
         }
 
         public async Task<RideOrder> SearchCarToRide(int rideOrderId)
-{
-    // --- Local helper: normalize any DateTime to UTC ---
-    // Treat Unspecified as Israel local time (common in UI-picked times), then convert to UTC.
-    static DateTime ToUtc(DateTime dt)
-    {
-        if (dt.Kind == DateTimeKind.Utc) return dt;
-        if (dt.Kind == DateTimeKind.Local) return dt.ToUniversalTime();
-
-        // Unspecified → assume Asia/Jerusalem local then convert to UTC
-        var il = TimeZoneInfo.FindSystemTimeZoneById("Israel Standard Time");
-        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), il);
-    }
-
-    // 1) Fetch the ride order
-    var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
-    if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
-        throw new InvalidOperationException("Ride order not found or not open");
-
-    // Normalize requested time to UTC for all comparisons/storage
-    rideOrder.RideTime = ToUtc(rideOrder.RideTime);
-
-    // 2) Candidate cars
-    var candidateCars = (await _carRepository.GetAvailableCarsAsync())
-        .Where(c => c.BatteryLevel > 40)
-        .Where(c => c.LastStation != null)
-        .ToList();
-
-    if (!candidateCars.Any())
-        throw new InvalidOperationException("No cars meet the availability criteria");
-
-    try
-    {
-        // 3) Choose a car (keep your existing strategy)
-        var startStationId = rideOrder.source.Id;
-        var sortedCars = CircularSortByStartNumber(candidateCars, startStationId);
-        var selectedCar = sortedCars.First();
-
-        // 4) Compute travel time with full safety
-        int travelMinutes = 0;
-        if (StationDurations.Matrix != null && selectedCar.LastStation != null)
         {
-            int from = selectedCar.LastStation.Id - 1;
-            int to   = startStationId - 1;
+            // Helper: convert Israel local to UTC
+            static DateTime IsraelToUtc(DateTime ilTime)
+            {
+                var tz = TimeZoneInfo.FindSystemTimeZoneById("Israel Standard Time");
+                return TimeZoneInfo.ConvertTimeToUtc(ilTime, tz);
+            }
 
-            bool inBounds =
-                from >= 0 && to >= 0 &&
-                from < StationDurations.Matrix.GetLength(0) &&
-                to   < StationDurations.Matrix.GetLength(1);
+            // Helper: convert any RideTime to UTC (assume IL if unspecified)
+            static DateTime ToUtc(DateTime dt)
+            {
+                if (dt.Kind == DateTimeKind.Utc) return dt;
+                if (dt.Kind == DateTimeKind.Local) return dt.ToUniversalTime();
+                var tz = TimeZoneInfo.FindSystemTimeZoneById("Israel Standard Time");
+                return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(dt, DateTimeKind.Unspecified), tz);
+            }
 
-            if (inBounds)
-                travelMinutes = StationDurations.Matrix[from, to];
+            var rideOrder = await _rideOrderRepository.GetRideByIdAsync(rideOrderId);
+            if (rideOrder == null || rideOrder.Status != RideOrderStatus.Open)
+                throw new InvalidOperationException("Ride order not found or not open");
+
+            rideOrder.RideTime = ToUtc(rideOrder.RideTime);
+
+            var candidateCars = (await _carRepository.GetAvailableCarsAsync())
+                .Where(c => c.BatteryLevel > 40)
+                .Where(c => c.LastStation != null)
+                .ToList();
+
+            if (!candidateCars.Any())
+                throw new InvalidOperationException("No cars meet the availability criteria");
+
+            var startStation = rideOrder.source.Id;
+            var sortedCars = CircularSortByStartNumber(candidateCars, startStation);
+            var selectedCar = sortedCars.First();
+
+            int travelMinutes = StationDurations.Matrix[selectedCar.LastStation.Id - 1, startStation - 1];
+
+            // ✅ Use Israel local current time first, then convert to UTC
+            var tz = TimeZoneInfo.FindSystemTimeZoneById("Israel Standard Time");
+            var nowIL = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+            var carArrivalIL = nowIL.AddMinutes(travelMinutes);
+            var carArrivalUtc = IsraelToUtc(carArrivalIL); // true UTC equivalent
+
+            Console.WriteLine($"[IL] now={nowIL:HH:mm}, carArrival={carArrivalIL:HH:mm}");
+            Console.WriteLine($"[UTC] carArrivalUtc={carArrivalUtc:O}");
+
+            // Compare using UTC
+            if (carArrivalUtc > rideOrder.RideTime)
+            {
+                rideOrder.RideTime = carArrivalUtc;
+                await _rideOrderRepository.UpdateRideAsync(rideOrder);
+                Console.WriteLine($"[Adjusted RideTime UTC] -> {rideOrder.RideTime:O}");
+            }
+
+            await AssignCarToRide(selectedCar, rideOrder);
+
+            if (rideOrder.RideTime > DateTime.UtcNow.AddMinutes(15))
+                selectedCar.Status = CarStatus.Waiting;
+
+            return rideOrder;
         }
-
-        // 5) All timing in UTC
-        var nowUtc          = DateTime.UtcNow;
-        var carArrivalUtc   = nowUtc.AddMinutes(travelMinutes);
-        var requestedUtc    = rideOrder.RideTime; // already normalized to UTC above
-
-        Console.WriteLine($"[UTC] now={nowUtc:O}, carArrival={carArrivalUtc:O}, requested={requestedUtc:O}, travelMin={travelMinutes}");
-
-        // 6) If the car can't make the requested time → postpone to car arrival time (UTC)
-        if (carArrivalUtc > requestedUtc)
-        {
-            rideOrder.RideTime = carArrivalUtc;
-            await _rideOrderRepository.UpdateRideAsync(rideOrder);
-            Console.WriteLine($"[UTC] Adjusted RideTime -> {rideOrder.RideTime:O}");
-        }
-
-        // 7) Assign the car (uses possibly-updated RideTime)
-        await AssignCarToRide(selectedCar, rideOrder);
-
-        // 8) Waiting status threshold (UTC)
-        if (rideOrder.RideTime > nowUtc.AddMinutes(15))
-            selectedCar.Status = CarStatus.Waiting;
-
-        return rideOrder;
-    }
-    catch (Exception e)
-    {
-        Console.WriteLine("Exception in SearchCarToRide: " + e.Message);
-        throw;
-    }
-}
 
 
         public async Task<List<RideOrder>> GetAllRideOrdersAsync()
